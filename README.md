@@ -11,7 +11,7 @@ cordova create ar530-plugin-example-app && cd $_
 - Add the plugin to it.
 
 ```bash
-cordova plugin add https://github.com/awelters/...#<latest-commit-code>
+cordova plugin add https://github.com/awelters/ar530_cordova_plugin#<latest-commit-code>
 ```
 
 - Implement a simple code snippet to test your setup.
