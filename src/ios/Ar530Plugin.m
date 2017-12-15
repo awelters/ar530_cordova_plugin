@@ -55,15 +55,15 @@ char uid[128] = {0};
 #pragma mark --Internal Methods--
 
 -(void)clearTimer {
-    if ([self.timer isValid]) {
-        [self.timer invalidate];
+    if ([_timer isValid]) {
+        [_timer invalidate];
     }
-    self.timer=nil;
+    _timer=nil;
 }
 
 -(void)poll {
     double scanPeriodInSecs = scanPeriod / 1000.0;
-    self.timer = [NSTimer scheduledTimerWithTimeInterval: scanPeriodInSecs
+    _timer = [NSTimer scheduledTimerWithTimeInterval: scanPeriodInSecs
                                                   target: self
                                                 selector: @selector(openCard)
                                                 userInfo: nil
@@ -100,7 +100,8 @@ char uid[128] = {0};
 
             // send tag read update to Cordova
             if (didFindTagWithUidCallbackId) {
-                NSArray* result = @[uid];
+                NSString *str = [NSString stringWithFormat:@"%s", uid];
+                NSArray* result = @[str];
                 CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsMultipart:result];
                 [pluginResult setKeepCallback:[NSNumber numberWithBool:YES]];
                 [self.commandDelegate sendPluginResult:pluginResult callbackId:didFindTagWithUidCallbackId];

@@ -4,6 +4,7 @@
  */
 
 #import "FTaR530.h"
+#import "utils.h"
 #import <Cordova/CDV.h>
 
 @interface Ar530Plugin : CDVPlugin <FTaR530Delegate>
@@ -14,7 +15,7 @@
 
      // Ar530 reader attributes
     FTaR530 *_ar530;
-    NSTimer * timer;
+    NSTimer *_timer;
 
 }
 
@@ -54,6 +55,5 @@
  *
  */
 -(void)FTaR530GetInfoDidComplete:(unsigned char *)retData retDataLen:(unsigned int)retDataLen  functionNum:(unsigned int)functionNum errCode:(unsigned int)errCode;
-@end
 
 @end
