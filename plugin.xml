@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<plugin xmlns="http://cordova.apache.org/ns/plugins/1.0"
+    id="com.ar530.sdk"
+    version="1.0.0">
+    <name>ar530_cordova_plugin</name>
+    <description>ar530 SDK integration enables NFC reader hardware.</description>
+
+    <!-- ios -->
+    <platform name="ios">
+        <config-file target="config.xml" parent="/*">
+            <feature name="Ar530Plugin">
+                <param name="ios-package" value="Ar530Plugin" />
+            </feature>
+        </config-file>
+        <js-module src="www/ar530Plugin.js" name="Ar530Plugin">
+            <clobbers target="ar530Plugin" />
+        </js-module>
+
+        <!-- Ar530 SDK library -->
+        <source-file src="src/ios/lFTaR530_all.a" framework="true" />
+
+        <!-- Ar530 SDK header files -->
+        <header-file src="src/ios/DUKPT.h" target-dir="src/ios"/>
+        <header-file src="src/ios/FTType.h" target-dir="src/ios"/>
+        <header-file src="src/ios/FTaR530.h" target-dir="src/ios"/>
+        <header-file src="src/ios/utils.h" target-dir="src/ios"/>
+
+        <!-- Ar530 SDK source files -->
+        <source-file src="src/ios/utils.cpp" />
+
+        <!-- System Frameworks -->
+        <framework src="AVFoundation.framework" />
+        <framework src="Foundation.framework" />
+        <framework src="CoreAudio.framework" />
+        <framework src="CoreMedia.framework" />
+        <framework src="ExternalAccessory.framework" />
+        <framework src="AudioToolbox.framework" />
+        <framework src="MediaPlayer.framework" />
+
+        <!-- Request permission to use mircophone -->
+       <config-file target="*-Info.plist" parent="NSMicrophoneUsageDescription">
+            <string>This app requires microphone access to function properly.</string>
+        </config-file>
+
+        <header-file src="src/ios/Ar530Plugin.h" />
+        <source-file src="src/ios/Ar530Plugin.m" />
+    </platform>
+</plugin>

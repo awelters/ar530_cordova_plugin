@@ -1,0 +1,22 @@
+{
+  "name": "ar530_cordova_plugin",
+  "version": "1.0.0",
+  "description": "ar530 SDK integration enables NFC reader hardware.",
+  "main": "www/ar530Plugin.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/awelters/ar530_cordova_plugin.git"
+  },
+  "keywords": [
+    "NFC",
+  ],
+  "author": "Andrew Welters",
+  "license": "",
+  "bugs": {
+    "url": "https://github.com/awelters/ar530_cordova_plugin/issues"
+  },
+  "homepage": ""
+}
