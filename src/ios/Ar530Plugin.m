@@ -34,10 +34,6 @@ char uid[128] = {0};
     NSString* callbackId = command.callbackId;
     NSString* periodString = [command.arguments objectAtIndex:0];
 
-    periodString = [periodString stringByReplacingOccurrencesOfString:@" " withString:@""];  // remove whitespace
-    if ([[periodString lowercaseString] isEqualToString:@"unchanged"]){
-        return;
-    }
     int period = [periodString intValue];
     if (period > 0) {
         scanPeriod = period;
