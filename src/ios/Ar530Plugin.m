@@ -89,7 +89,7 @@ char uid[128] = {0};
         HexToStr(newUid, cardHandle->uid, cardHandle->uidLen);
         isOpen = YES ;
 
-        NSLog(@"FT_FUNCTION_NUM_OPEN_CARD Found tag UID: %@", uid);
+        NSLog(@"FT_FUNCTION_NUM_OPEN_CARD Found tag UID: %s", uid);
 
         //only if a new uid do we dispatch found tag
         if(strcmp(newUid, uid) != 0) {
