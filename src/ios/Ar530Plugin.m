@@ -88,8 +88,8 @@ char uid[128] = {0};
         NSLog(@"FT_FUNCTION_NUM_OPEN_CARD Found tag UID: %s", uid);
 
         //only if a new uid do we dispatch found tag
-        if(strcmp(newUid, uid) != 0) {
-            NSLog(@"FT_FUNCTION_NUM_OPEN_CARD Found NEW tag");
+        //if(strcmp(newUid, uid) != 0) {
+        //    NSLog(@"FT_FUNCTION_NUM_OPEN_CARD Found NEW tag");
 
             memset(uid, '\0', sizeof(uid));
             strcpy(uid, newUid);
@@ -102,7 +102,7 @@ char uid[128] = {0};
                 [pluginResult setKeepCallback:[NSNumber numberWithBool:YES]];
                 [self.commandDelegate sendPluginResult:pluginResult callbackId:didFindTagWithUidCallbackId];
             }
-        }
+        //}
 
     }
     else{
