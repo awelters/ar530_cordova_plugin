@@ -3,22 +3,23 @@ var exec = require('cordova/exec');
  * Constructor
  */
 module.exports = {
-    init: function(success, failure) {
-        exec(success, failure, 'Ar530Plugin', 'init', []);
-    },
-
-    setConfiguration: function(configurationDictionary, success, failure) {
+    init: function(configurationDictionary, success, failure) {
         var configurationArray = new Array();
-        var keyArray = new Array("scanPeriod");
+        var keyArray = new Array("shouldPoll");
+
         // convert dictionary to array
         for (index in keyArray) {
             if (typeof configurationDictionary[keyArray[index]] === 'undefined') {
-                configurationArray.push("unchanged");
+                configurationArray.push("0");
             } else {
                 configurationArray.push(configurationDictionary[keyArray[index]]);
             }
         }
-        exec(success, failure, "Ar530Plugin", "setConfiguration", configurationArray);
+        exec(success, failure, 'Ar530Plugin', 'init', configurationArray);
+    },
+
+    scanForTag: function(success, failure) {
+        exec(success, failure, "Ar530Plugin", "scanForTag", []);
     },
 
     addTagDiscoveredListener: function(resultCallback, success, failure) {

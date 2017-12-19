@@ -26,28 +26,31 @@ ar530Plugin.init();
 
 * `init()`
 
-	Initialises the plugin, preparing it for first use in the current session
+	Initialises and configures the plugin, preparing it for first use in the current session
 
+    ```
+    Object configuration
+    {
+        int shouldPoll,  // 1 for polling, 0 for on demand tag scans
+    }
+
+    e.g
+    let configuration = {}
+      configuration = {
+        shouldPoll: 1
+      }
+
+      ar530Plugin.init(configuration);
+    ```
 
 **Optional methods**
 
-* `setConfiguration(configuration)`
+* `scanForTag()`
 
-	Configures settings for the current session.
+	If not polling then call this method to scan for a tag now.
 
 	```
-	Object configuration
-	{
-		int scanPeriod,  // scan period in ms
-	}
-
-	e.g
-	let configuration = {}
-      configuration = {
-        scanPeriod: 1000,  // scan period in ms
-      }
-
-      ar530Plugin.setConfiguration(configuration);
+      ar530Plugin.scanForTag();
 	```
 
 * `addTagDiscoveredListener(resultCallback)`

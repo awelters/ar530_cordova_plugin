@@ -15,19 +15,18 @@
 
      // Ar530 reader attributes
     FTaR530 *_ar530;
-    NSTimer *_timer;
 
 }
 
 
 // Cordova functions
 - (void)init:(CDVInvokedUrlCommand*)command;
-- (void)setConfiguration:(CDVInvokedUrlCommand*)command;
+- (void)scanForTag:(CDVInvokedUrlCommand*)command;
 - (void)setTagDiscoveredCallback:(CDVInvokedUrlCommand*)command;
 
 // Internal functions
--(void)clearTimer;
 -(void)poll;
+-(void)startReading;
 -(void)openCard;
 -(void)getOpenResult:(nfc_card_t)cardHandle;
 
