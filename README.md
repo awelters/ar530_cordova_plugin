@@ -17,7 +17,7 @@ cordova plugin add https://github.com/awelters/ar530_cordova_plugin#<latest-comm
 - Implement a simple code snippet to test your setup.
 
 ```
-ar530Plugin.init();
+ar530Plugin.init(configuration);
 ```
 
 ## API
