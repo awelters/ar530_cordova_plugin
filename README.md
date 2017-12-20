@@ -29,7 +29,6 @@ var app = {
     // Bind any cordova events here. Common events are:
     // 'pause', 'resume', etc.
     onDeviceReady: function() {
-        this.receivedEvent('deviceready');
         var configuration = {
             shouldPoll: 0,  // 1 for nfc polling, 0 on demand
             healthCheckPeriod: 30000 //0 will turn off health check, else >= 1000 ms
