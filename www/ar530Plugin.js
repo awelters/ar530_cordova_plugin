@@ -6,37 +6,47 @@ var exec = require('cordova/exec');
 
  */
 
+var configFn = function(configurationDictionary, success, failure, fnName) {
+
+   var configurationArray = new Array();
+
+   var keyArray = new Array("shouldPoll", "scanPeriod");
+
+   // convert dictionary to array
+
+   for (index in keyArray) {
+
+       if (typeof configurationDictionary[keyArray[index]] === 'undefined') {
+
+           configurationArray.push("0");
+
+       } else {
+
+           configurationArray.push(configurationDictionary[keyArray[index]]);
+
+       }
+
+   }
+
+
+
+    exec(success, failure, 'Ar530Plugin', fnName, configurationArray);
+
+};
+
 module.exports = {
 
     init: function(configurationDictionary, success, failure) {
 
-       var configurationArray = new Array();
-
-       var keyArray = new Array("shouldPoll", "healthCheckPeriod");
-
-       // convert dictionary to array
-
-       for (index in keyArray) {
-
-           if (typeof configurationDictionary[keyArray[index]] === 'undefined') {
-
-               configurationArray.push("0");
-
-           } else {
-
-               configurationArray.push(configurationDictionary[keyArray[index]]);
-
-           }
-
-       }
-
-
-
-        exec(success, failure, 'Ar530Plugin', 'init', configurationArray);
+       configFn(configurationDictionary, success, failure, 'init');
 
     },
 
+    configure: function(configurationDictionary, success, failure) {
 
+       configFn(configurationDictionary, success, failure, 'configure');
+
+    },
 
     scanForTag: function(success, failure) {
 
@@ -44,7 +54,35 @@ module.exports = {
 
     },
 
+    stopScanForTag: function(success, failure) {
 
+        exec(success, failure, "Ar530Plugin", "stopScanForTag", []);
+
+    },
+
+    playSound: function(success, failure) {
+
+        exec(success, failure, "Ar530Plugin", "playSound", []);
+
+    },
+
+    disableSound: function(success, failure) {
+
+        exec(success, failure, "Ar530Plugin", "disableSound", []);
+
+    },
+
+    getDeviceInfo: function(resultCallback, success, failure) {
+
+        exec(
+
+            function(libVersion,deviceID,firmwareVersion,deviceUID) { resultCallback({ libVersion: libVersion, deviceID: deviceID, firmwareVersion: firmwareVersion, deviceUID: deviceUID }) },
+
+            function(failure) { console.log("ERROR: Ar530Plugin.getDeviceInfo: " + failure) },
+
+            "Ar530Plugin", "getDeviceInfo", []);
+
+    },
 
    addConnectedListener: function(resultCallback, success, failure) {
 
