@@ -31,7 +31,7 @@ var app = {
     onDeviceReady: function() {
         var configuration = {
             shouldPoll: 0,  // 1 for nfc polling, 0 on demand
-            healthCheckPeriod: 30000 //0 will turn off health check, else >= 1000 ms
+            scanPeriod: 30000 // if shouldPoll == 0 then scanPeriod must be >= 1000 ms
         }
         ar530Plugin.addConnectedListener(function(isConnected) {
             console.log("isConnected",isConnected);
@@ -60,14 +60,14 @@ app.initialize();
     Object configuration
     {
         int shouldPoll,  // 1 for polling, 0 for on demand tag scans
-        int healthCheckPeriod  //0 will turn off health check, else >= 1000 ms
+        int scanPeriod  // if shouldPoll == 0 then scanPeriod must be >= 1000 ms
     }
 
     e.g
     let configuration = {}
       configuration = {
         shouldPoll: 0,
-        healthCheckPeriod: 30000
+        scanPeriod: 30000
       }
 
       ar530Plugin.init(configuration);
@@ -75,12 +75,45 @@ app.initialize();
 
 **Optional methods**
 
+* `configure()`
+
+	Reconfigures plugin.  See init function for configuration object details.
+
+	```
+      ar530Plugin.configure(configuration);
+	```
+
 * `scanForTag()`
 
-	If not polling then call this method to scan for a tag now.
+	Scan for tags.
 
 	```
       ar530Plugin.scanForTag();
+	```
+	
+* `stopScanForTag()`
+
+	Stops scanning for tags.
+
+	```
+      ar530Plugin.stopScanForTag();
+	```
+
+* `getDeviceInfo(resultCallback)`
+
+	Assign a callback function to get the device info of the reader
+
+	```
+      	ar530Plugin.getDeviceInfo(resultCallback);
+      
+      	function resultCallback(result)
+	Object result
+	{
+		String libVersion,
+		String deviceID,
+		String firmwareVersion,
+		String deviceUID
+	}
 	```
 
 * `addTagDiscoveredListener(resultCallback)`
