@@ -16,9 +16,11 @@ BOOL isOpen = NO ;
 
 BOOL isPolling = NO ;
 
-int scanPeriod = 30000;
+int defaultScanPeriod = 1000;
 
+int scanPeriod = -1;
 
+int connnectedState = -1;
 
 @implementation Ar530Plugin
 
@@ -29,45 +31,8 @@ int scanPeriod = 30000;
 - (void)init:(CDVInvokedUrlCommand*)command {
 
     if (!_ar530) {
-
-        NSString* callbackId = command.callbackId;
-
-        NSString* shouldPollString = [command.arguments objectAtIndex:0];
-
-        NSString* periodString = [command.arguments objectAtIndex:1];
-
-
-
-        int shouldPoll = [shouldPollString intValue];
-
-        if (shouldPoll == 0) {
-
-            isPolling = NO;
-
-        } else {
-
-            isPolling = YES;
-
-        }
-
-
-
-        int period = [periodString intValue];
-
-        if (period == 0 || period >= 1000) {
-
-            scanPeriod = period;
-
-        } else {
-
-            CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Scan period either must be turned off aka 0 or it must be >= 1000"];
-
-            [self.commandDelegate sendPluginResult:pluginResult callbackId:callbackId];
-
-        }
-
-
-
+        NSLog(@"R init") ;
+        
         // Initialise ar530SDK
 
         _ar530 = [FTaR530 sharedInstance];
@@ -92,30 +57,110 @@ int scanPeriod = 30000;
 
         _ar530.cardType = cardType;
 
+        //reset device info
+        [self resetDeviceInfo];
 
+        //configure
+        [self configure:command];
 
-        [self startReading];
+        //kick off
+        [self kickoff];
 
     }
 
 }
 
+- (void)configure:(CDVInvokedUrlCommand*)command {
+    NSLog(@"R configure") ;
 
+    NSString* shouldPollString = [command.arguments objectAtIndex:0];
+    NSString* periodString = [command.arguments objectAtIndex:1];
+    int shouldPoll = [shouldPollString intValue];
+    BOOL startPoll = NO;
+
+    [self clearScanningTimer];
+
+    //need to auto poll if configuring to poll, has already initialized the plugin, and is not polling now already auto polling
+    if (shouldPoll == 1 && scanPeriod != -1 && isPolling == NO) {
+        startPoll = YES;
+    }
+
+    isPolling = NO;
+
+    if (shouldPoll == 0) {
+
+        int period = [periodString intValue];
+
+        if (period == 0 || period >= defaultScanPeriod) {
+
+            scanPeriod = period;
+
+        } else {
+
+            scanPeriod = defaultScanPeriod;
+
+            NSString *str = [NSString stringWithFormat:@"Scan period either must be turned off aka 0 or it must be >= %d", defaultScanPeriod];
+            CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:str];
+
+            [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        }
+
+    } else {
+
+        isPolling = YES;
+        scanPeriod = 0;
+
+        if( startPoll == YES ) {
+            [self poll];
+        }
+
+    }
+}
+
+- (void)playSound:(CDVInvokedUrlCommand*)command {
+    //[ _ar530 playSound:self];
+}
+
+- (void)disableSound:(CDVInvokedUrlCommand*)command {
+    //[ _ar530 disabbleConnectSound:self];
+}
+
+- (void)getDeviceInfo:(CDVInvokedUrlCommand*)command {
+    //dispatch_async(dispatch_get_main_queue(), ^{
+        NSArray* result = @[_libVersion,_deviceID,_firmwareVersion,_deviceUID];
+        CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsMultipart:result];
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+    //});
+}
 
 - (void)scanForTag:(CDVInvokedUrlCommand*)command {
 
-    if(isOpen == YES && isPolling == NO) {
+    if(isOpen == YES) {
 
-        isPolling = YES;
+        if (scanPeriod > 0) {
+            [self startScanning];
+        }
 
-        [self poll];
+        if(isPolling == NO) {
+            isPolling = YES;
 
-        isPolling = NO;
+            [self poll];
+        }
 
     }
 
 }
 
+- (void)stopScanForTag:(CDVInvokedUrlCommand*)command {
+
+    if (scanPeriod > 0) {
+        [self stopScanning];
+    }
+    else {
+        isPolling = NO;
+    }
+
+}
 
 
 - (void)setDeviceConnectedCallback:(CDVInvokedUrlCommand*)command
@@ -141,42 +186,40 @@ int scanPeriod = 30000;
 #pragma mark --Internal Methods--
 
 
+-(void)kickoff
 
--(void)healthCheck {
+{
 
-    //timed out
+    dispatch_async(dispatch_get_main_queue(), ^(void){
 
-    NSLog(@"healthCheck");
+        // Here we need waiting until the device has initialized
 
+        [NSThread sleepForTimeInterval:2.5f] ;
 
+        [ _ar530 getDeviceID:self];
 
-    //TODO: set the timer for 5 seconds and call getDeviceID, if the timer does not get reset in that time we are disconnected
-
-    double scanPeriodInSecs = 5.0;
-
-    _timer = [NSTimer scheduledTimerWithTimeInterval: scanPeriodInSecs
-
-                                              target: self
-
-                                            selector: @selector(FTaR530DidDisconnected)
-
-                                            userInfo: nil
-
-                                             repeats: NO];
-
-    [ _ar530 getDeviceID:self];
+    });
 
 }
 
+-(void)resetDeviceInfo
 
+{
+    NSLog(@"R resetDeviceInfo") ;
 
--(void)startDeviceHealthCheck {
+    _libVersion = [NSString stringWithFormat:@""];
+    _deviceID = [NSString stringWithFormat:@""];
+    _firmwareVersion = [NSString stringWithFormat:@""];
+    _deviceUID = [NSString stringWithFormat:@""];
+}
+
+-(void)startScanning {
 
     if (scanPeriod > 0) {
 
-        [self stopDeviceHealthCheck];
+        [self clearScanningTimer];
 
-        NSLog(@"startDeviceHealthCheck");
+        NSLog(@"startScanning");
 
         double scanPeriodInSecs = scanPeriod / 1000.0;
 
@@ -184,7 +227,7 @@ int scanPeriod = 30000;
 
                                                   target: self
 
-                                                selector: @selector(healthCheck)
+                                                selector: @selector(stopScanning)
 
                                                 userInfo: nil
 
@@ -194,11 +237,9 @@ int scanPeriod = 30000;
 
 }
 
+-(void)clearScanningTimer {
 
-
--(void)stopDeviceHealthCheck {
-
-    NSLog(@"stopDeviceHealthCheck");
+    NSLog(@"clearScanningTimer");
 
     if ([_timer isValid]) {
 
@@ -207,7 +248,17 @@ int scanPeriod = 30000;
     }
 
     _timer=nil;
+}
 
+-(void)stopScanning {
+
+    NSLog(@"stopScanning");
+
+    [self clearScanningTimer];
+
+    if (scanPeriod > 0) {
+        isPolling = NO;
+    }
 }
 
 
@@ -218,7 +269,7 @@ int scanPeriod = 30000;
 
         dispatch_async(dispatch_get_main_queue(), ^(void){
 
-            [self openCard];
+            [_ar530 NFC_Card_Open:self];
 
         });
 
@@ -228,39 +279,31 @@ int scanPeriod = 30000;
 
 
 
--(void)startReading
-
-{
-
-    dispatch_async(dispatch_get_main_queue(), ^(void){
-
-        // Here we need waiting until the device has initialized
-
-        [NSThread sleepForTimeInterval:2.5f] ;
-
-        [self startDeviceHealthCheck];
-
-        [ _ar530 getDeviceID:self];
-
-    });
-
-}
-
-
-
 -(void)connected:(int)yesOrNo
 
 {
 
-    NSLog(@"connected: %d", yesOrNo);
+    NSLog(@"yesOrNo: %d", yesOrNo);
 
+    //don't report an unknown connection if we know we are disconnected
+    if(connnectedState == 0 && yesOrNo == -1) {
+        return;
+    }
 
+    if(yesOrNo == -1) {
+        connnectedState = 0;
+    }
+    else {
+        connnectedState = yesOrNo;
+    }
+
+    NSLog(@"connected: %d", connnectedState);
 
     // send tag read update to Cordova
 
     if (deviceConnectedCallbackId) {
 
-        NSString *str = [NSString stringWithFormat:@"%d", yesOrNo];
+        NSString *str = [NSString stringWithFormat:@"%d", connnectedState];
 
         CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:str];
 
@@ -274,17 +317,6 @@ int scanPeriod = 30000;
 
 
 
--(void)openCard
-
-{
-
-    [_ar530 NFC_Card_Open:self];
-
-}
-
-
-
-
 
 -(void)getOpenResult:(nfc_card_t)cardHandle
 
@@ -293,8 +325,6 @@ int scanPeriod = 30000;
     if(cardHandle != 0) {
 
         NSLog(@"FT_FUNCTION_NUM_OPEN_CARD success!");
-
-        [self startDeviceHealthCheck];
 
         char newUid[128] = {0};
 
@@ -307,6 +337,8 @@ int scanPeriod = 30000;
             [self connected:1];
 
         }
+
+        [self stopScanning];
 
 
 
@@ -339,9 +371,10 @@ int scanPeriod = 30000;
     }
 
 
-
+    //if not in continous poll mode and the polling period is over
     if(isPolling == NO) {
 
+        //and there is a card handle then dispose of resources
         if(cardHandle != 0) {
 
             dispatch_async(dispatch_get_main_queue(), ^(void){
@@ -364,8 +397,6 @@ int scanPeriod = 30000;
 
 }
 
-
-
 #pragma mark - aR530 Delegates
 
 
@@ -384,7 +415,7 @@ int scanPeriod = 30000;
 
 
 
-    [self startReading];
+    [self kickoff];
 
 }
 
@@ -396,8 +427,8 @@ int scanPeriod = 30000;
 
 
 
-    [self stopDeviceHealthCheck];
-
+    [self stopScanning];
+    [self resetDeviceInfo];
 
 
     //release
@@ -422,33 +453,9 @@ int scanPeriod = 30000;
 
 {
 
-    NSLog(@"FTaR530GetInfoDidComplete") ;
-
-
+    NSLog(@"FTaR530GetInfoDidComplete %d",functionNum) ;
 
     NSString *retString = [NSString stringWithUTF8String:(char*)retData];
-
-
-
-    //disconnected
-
-    if (retString.length <= 0) {
-
-        if(isOpen == YES) {
-
-            [self stopDeviceHealthCheck];
-
-        }
-
-    } //connected
-
-    else {
-
-        [self startDeviceHealthCheck];
-
-    }
-
-
 
     switch (functionNum) {
 
@@ -456,8 +463,25 @@ int scanPeriod = 30000;
 
             NSLog(@"FT_FUNCTION_NUM_GET_DEVICEID") ;
 
-            dispatch_async(dispatch_get_main_queue(), ^(void){
+            if (retString.length <= 0) {
 
+                //disconnected
+
+                if(isOpen == YES) {
+
+                    [self stopScanning];
+
+                }
+
+            } 
+
+            else {
+
+                //connected
+
+            }
+
+            dispatch_async(dispatch_get_main_queue(), ^(void){
 
 
                 if (retString.length <= 0) {
@@ -469,20 +493,19 @@ int scanPeriod = 30000;
                         [self connected:0];
 
                     }
+                    else {
+
+                        [self connected:-1];
+
+                    }
 
                 }
 
                 else {
 
-                    if(isOpen == NO) {
-
-                        isOpen = YES ;
-
-                        [self connected:1];
-
-                    }
-
-                    [self poll];
+                    _libVersion = [NSString stringWithFormat:@"%@", [_ar530 getLibVersion], nil];
+                    _deviceID = [NSString stringWithFormat:@"%@",retString,nil];
+                    [_ar530 getFirmwareVersion:self];
 
                 }
 
@@ -492,6 +515,45 @@ int scanPeriod = 30000;
 
             break;
 
+        }
+
+        case FT_FUNCTION_NUM_GET_FIRMWAREVERSION:{
+
+            NSLog(@"FT_FUNCTION_NUM_GET_FIRMWAREVERSION") ;
+
+            dispatch_async(dispatch_get_main_queue(), ^(void){
+                
+                _firmwareVersion = [NSString stringWithFormat:@"%@",retString,nil];
+                
+                // get device UID
+                [ _ar530 getDeviceUID:self];
+                
+                //isOpen = YES ;
+                
+            });
+            break;
+        }
+
+        case FT_FUNCTION_NUM_GET_DEVICEUID:{
+
+            NSLog(@"FT_FUNCTION_NUM_GET_DEVICEUID") ;
+            
+            dispatch_async(dispatch_get_main_queue(), ^(void){
+                
+                _deviceUID = [NSString stringWithFormat:@"%@",retString,nil];
+
+                if(isOpen == NO) {
+
+                    isOpen = YES ;
+
+                    [self connected:1];
+
+                }
+                
+                [self poll];
+
+            });
+            break;
         }
 
         default:
