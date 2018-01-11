@@ -29,10 +29,20 @@
     NSString* deviceConnectedCallbackId;
 
 
-
      // Ar530 reader attributes
 
     FTaR530 *_ar530;
+
+    NSString* _libVersion;
+
+    NSString* _deviceID;
+
+    NSString* _firmwareVersion;
+
+    NSString* _deviceUID;
+
+
+    // internal attributes
 
     NSTimer *_timer;
 
@@ -48,7 +58,17 @@
 
 - (void)init:(CDVInvokedUrlCommand*)command;
 
+- (void)configure:(CDVInvokedUrlCommand*)command;
+
+- (void)playSound:(CDVInvokedUrlCommand*)command;
+
+- (void)disableSound:(CDVInvokedUrlCommand*)command;
+
+- (void)getDeviceInfo:(CDVInvokedUrlCommand*)command;
+
 - (void)scanForTag:(CDVInvokedUrlCommand*)command;
+
+- (void)stopScanForTag:(CDVInvokedUrlCommand*)command;
 
 - (void)setDeviceConnectedCallback:(CDVInvokedUrlCommand*)command;
 
@@ -58,16 +78,21 @@
 
 // Internal functions
 
--(void)poll;
+-(void)kickoff;
 
--(void)startReading;
+-(void)resetDeviceInfo;
+
+-(void)startScanning;
+
+-(void)clearScanningTimer;
+
+-(void)stopScanning;
+
+-(void)poll;
 
 -(void)connected:(int)yesOrNo;
 
--(void)openCard;
-
 -(void)getOpenResult:(nfc_card_t)cardHandle;
-
 
 
 // SDK reader delegates
