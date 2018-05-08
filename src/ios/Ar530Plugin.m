@@ -445,10 +445,10 @@ NSString *memory = nil;
     }
     
     cardType = cardHandle->type;
-
+ 
+    memoryRead = 0;
+    memory = @"";
     if(cardT == CARD_NXP_MIFARE_UL) {
-        memoryRead = 0;
-        memory = @"";
         [self readMifareUltralightMemory:cardHandle];
     }
     else {
