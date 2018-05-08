@@ -118,12 +118,13 @@ app.initialize();
 
 * `addTagDiscoveredListener(resultCallback)`
 
-	Assign a callback function to fire when the UID of a tag is found by any reader
+	Assign a callback function to fire when the UID of a tag is found by any reader (and all the memory if it is a Mifare Ultralight C tag aka payload otherwise the payload is an empty string)
 
 	```
 	function resultCallback(result)
 	Object result
 	{
-		String tagUid
+		String tagUid,
+		String payload
 	}
 	```
