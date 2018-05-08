@@ -100,7 +100,7 @@
 
 -(void)getRecognizeResult:(nfc_card_t)cardHandle errCode:(unsigned int)errCode;
 
--(void)tagDiscovered;
+-(void)parseTransmitResult:(nfc_card_t)cardHandle result:(NSString *)result;
 
 -(void)readMifareUltralightMemory:(nfc_card_t)cardHandle;
 
