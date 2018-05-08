@@ -22,6 +22,14 @@ int scanPeriod = -1;
 
 int connnectedState = -1;
 
+char newUid[128] = {0};
+
+unsigned int cardType = 0;
+
+unsigned int memoryRead = 0;
+
+NSString *memory = nil;
+
 @implementation Ar530Plugin
 
 
@@ -315,62 +323,21 @@ int connnectedState = -1;
 
 }
 
-
-
-
--(void)getOpenResult:(nfc_card_t)cardHandle
-
+-(void)cardIsOpen:(nfc_card_t)cardHandle
 {
+    if(isOpen == NO) {
 
-    if(cardHandle != 0) {
+        isOpen = YES ;
 
-        NSLog(@"FT_FUNCTION_NUM_OPEN_CARD success!");
-
-        char newUid[128] = {0};
-
-        HexToStr(newUid, cardHandle->uid, cardHandle->uidLen);
-
-        if(isOpen == NO) {
-
-            isOpen = YES ;
-
-            [self connected:1];
-
-        }
-
-        [self stopScanning];
-
-
-
-        NSLog(@"FT_FUNCTION_NUM_OPEN_CARD Found tag UID: %s", newUid);
-
-
-
-        // send tag read update to Cordova
-
-        if (didFindTagWithUidCallbackId) {
-
-            NSString *str = [NSString stringWithFormat:@"%s", newUid];
-
-            NSArray* result = @[str];
-
-            CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsMultipart:result];
-
-            [pluginResult setKeepCallback:[NSNumber numberWithBool:YES]];
-
-            [self.commandDelegate sendPluginResult:pluginResult callbackId:didFindTagWithUidCallbackId];
-
-        }
+        [self connected:1];
 
     }
 
-    else{
+    [self stopScanning];
+}
 
-        NSLog(@"FT_FUNCTION_NUM_OPEN_CARD failed!");
-
-    }
-
-
+-(void)closeOpenCard:(nfc_card_t)cardHandle
+{
     //if not in continous poll mode and the polling period is over
     if(isPolling == NO) {
 
@@ -394,7 +361,224 @@ int connnectedState = -1;
         [self poll];
 
     }
+}
 
+-(void)getOpenResult:(nfc_card_t)cardHandle
+{
+    if(cardHandle != 0) {
+        NSLog(@"FT_FUNCTION_NUM_OPEN_CARD success!");
+
+        memset(newUid, 0, sizeof newUid);
+
+        HexToStr(newUid, cardHandle->uid, cardHandle->uidLen);
+
+        [self cardIsOpen:cardHandle];
+
+        NSLog(@"FT_FUNCTION_NUM_OPEN_CARD Found tag UID: %s", newUid);
+
+        [_ar530 NFC_Card_Recognize:cardHandle delegate:self];
+    }
+    else{
+        NSLog(@"FT_FUNCTION_NUM_OPEN_CARD failed!");
+        [self closeOpenCard:cardHandle];
+    }
+    
+}
+
+-(void)getRecognizeResult:(nfc_card_t)cardHandle errCode:(unsigned int)errCode
+{
+    if(errCode == 0xFF) {
+        NSLog(@"FT_FUNCTION_NUM_RECOGNIZE failed!");
+        [self closeOpenCard:cardHandle];
+        return;
+    }
+    
+    unsigned int cardT = 0;
+    NSString *tempkeyType = @"";
+
+    char IDm[16 + 1] = {0};
+    char PMm[16 + 1] = {0};
+    char pupi[64] = {0};
+//    char atqa[4+1] = {0} ;
+    
+    cardT = errCode;
+    
+    [self cardIsOpen:cardHandle];
+    
+    // get the card type
+    if(cardHandle->type == CARD_TYPE_A) {
+        tempkeyType = @"A" ;
+        if(cardT == CARD_NXP_MIFARE_1K || cardT == CARD_NXP_MIFARE_4K){
+            NSLog(@"FT_FUNCTION_NUM_RECOGNIZE Card Type:Mifare 1K\nSAK:%02x", cardHandle->SAK);
+        }else if(cardT == CARD_NXP_DESFIRE_EV1) {
+            NSLog(@"FT_FUNCTION_NUM_RECOGNIZE Card Type:A\nSAK:%02x", cardHandle->SAK);
+        }else if(cardT == CARD_NXP_MIFARE_UL) {
+            //this is the only one we can actually handle
+            NSLog(@"FT_FUNCTION_NUM_RECOGNIZE Card Type:Mifare 1K\nSAK:%02x", cardHandle->SAK);
+        }else {
+            NSLog(@"FT_FUNCTION_NUM_RECOGNIZE Card Type:A\nSAK:%02x", cardHandle->SAK);
+        }
+    }
+    else if(cardHandle->type == CARD_TYPE_B) {
+        tempkeyType = @"B" ;
+        if(cardT == CARD_NXP_M_1_B) {
+            HexToStr(pupi, cardHandle->PUPI, cardHandle->PUPILen);
+            NSLog(@"FT_FUNCTION_NUM_RECOGNIZE Card Type:B\nATQB:%02x PUPI:%s", cardHandle->ATQB, pupi);
+        }else if(cardT == CARD_NXP_TYPE_B) {
+            HexToStr(pupi, cardHandle->PUPI, cardHandle->PUPILen);
+            NSLog(@"FT_FUNCTION_NUM_RECOGNIZE Card Type:B\nATQB:%02x PUPI:%s", cardHandle->ATQB, pupi);
+        }
+    }
+    else if(cardHandle->type == CARD_TYPE_C) {                  // Felica
+        HexToStr(IDm, cardHandle->IDm, 8);
+        HexToStr(PMm, cardHandle->PMm, 8);
+        NSLog(@"FT_FUNCTION_NUM_RECOGNIZE Card Type:B\nFelica\nFelica_ID:%s\nPad_ID:%s", IDm, PMm);
+    }
+    else if(cardHandle->type == CARD_TYPE_D) {                  // Topaz
+        HexToStr(pupi, cardHandle->PUPI, cardHandle->PUPILen);
+        NSLog(@"FT_FUNCTION_NUM_RECOGNIZE Card Type:Topaz\nATQA:%02x ID1z:%s", cardHandle->ATQA, pupi);
+    }
+    else{
+        NSLog(@"FT_FUNCTION_NUM_RECOGNIZE Unknown type of card!");
+        [self closeOpenCard:cardHandle];
+        return ;
+    }
+    
+    cardType = cardHandle->type;
+
+    if(cardT == CARD_NXP_MIFARE_UL) {
+        memoryRead = 0;
+        memory = @"";
+        [self readMifareUltralightMemory:cardHandle];
+    }
+    else {
+        [self closeOpenCard:cardHandle];
+    }
+}
+
+-(void)readMifareUltralightMemory:(nfc_card_t)cardHandle {
+    dispatch_async(dispatch_get_main_queue(), ^(void){
+        //FFB0000410
+        //[self transmit:cardHandle apduText:@"FFCA000000"];
+        //[self OnCusTransmit:cardHandle apduText:@"3B8F8001804F0CA0000003060300030000000068"];
+        if(memoryRead == 0) {
+            [self transmit:cardHandle apduText:@"FFB0000010"];
+        }
+        else if(memoryRead == 1) {
+            [self transmit:cardHandle apduText:@"FFB0000410"];
+        }
+        else if(memoryRead == 2) {
+            [self transmit:cardHandle apduText:@"FFB0000810"];
+        }
+        else if(memoryRead == 3) {
+            [self transmit:cardHandle apduText:@"FFB0000C10"];
+        }
+    });
+}
+
+-(void)parseTransmitResult:(nfc_card_t)cardHandle result:(NSString *)result {
+    //readMifareUltralightMemory result
+    unsigned long len = [result length];
+    if (len >= 5) {
+        NSRange r;
+        r.location = len-4;
+        r.length = 4;
+        NSString* readMemoryResult = [result substringWithRange:r];
+        NSString* log = @"parseTransmitResult readMemoryResult:\n";
+        log = [log stringByAppendingString:readMemoryResult];
+        NSLog(log);
+        if([readMemoryResult isEqualToString:@"9000"]) {
+            r.location = 0;
+            r.length = len-4;
+            NSString* data = [result substringWithRange:r];
+            NSString* logToo = @"parseTransmitResult data:\n";
+            logToo = [logToo stringByAppendingString:data];
+            NSLog(logToo);
+            memory = [memory stringByAppendingString:data];
+            if(++memoryRead < 4) {
+                [self readMifareUltralightMemory:cardHandle];
+            }
+            else {
+                NSString* logAlso = @"parseTransmitResult memory:\n";
+                logAlso = [logAlso stringByAppendingString:memory];
+                NSLog(logAlso);
+                [self closeOpenCard:cardHandle];
+            }
+        }
+        else {
+            [self closeOpenCard:cardHandle];
+        }
+    } else {
+        [self closeOpenCard:cardHandle];
+    }
+}
+
+-(void)transmit:(nfc_card_t)cardHandle apduText:(NSString *)apduText {
+    int nPos = 0;
+    char apduStr[1024] = {0} ;
+    char IDm[16 + 1] = {0};
+    const char * ptmpStr = [apduText UTF8String];
+    unsigned char apduBuf[100] = {0};
+    unsigned int apduLen = 0;
+    
+    if(apduText == nil || [apduText isEqualToString:@""] ){
+        NSLog(@"transmit APDU is error!") ;
+        return;
+    }
+    
+    if(cardType == CARD_TYPE_C){
+        memcpy(apduStr + nPos, ptmpStr, 2) ;
+        nPos += 2 ;
+        
+        HexToStr(IDm, cardHandle->IDm, 8);
+        memcpy(apduStr + nPos, IDm, 16) ;
+        nPos += 16 ;
+        
+        memcpy(apduStr + nPos, ptmpStr+2 , [apduText length] - 2) ;
+        nPos += [apduText length] - 2 ;
+        
+        apduLen = nPos / 2;
+        
+    }
+    else{
+        memcpy(apduStr, ptmpStr, [apduText length]) ;
+        apduLen = (unsigned int)[apduText length] / 2;
+    }
+    
+    StrToHex(apduBuf, (char *)apduStr, (unsigned int)apduLen);
+    
+    NSLog(@"transmit send:\n%s", ptmpStr);
+    //NFC_Card_No_Head_Transmit
+    [_ar530 NFC_Card_Transmit:cardHandle sendBuf:apduBuf sendLen:apduLen delegate:self];
+}
+
+-(void)getTransmitResult:(nfc_card_t)cardHandle retData:(unsigned char *)retData retDataLen:(unsigned int)retDataLen errCode:(unsigned int)errCode
+{
+    if(0 == errCode) {
+        char resultStr[1024] = {0};
+
+        HexToStr(resultStr, retData, retDataLen);
+        NSLog(@"FT_FUNCTION_NUM_TRANSMIT errCode = 0, recv:\n%s",resultStr);
+        [self parseTransmitResult:cardHandle result:[NSString stringWithFormat:@"%s", resultStr]];
+    }
+    else if(NFC_CARD_ES_NO_SMARTCARD == errCode) {
+        NSLog(@"FT_FUNCTION_NUM_TRANSMIT Not Found SmartCard! Please Reconnect with Reader!");
+        [self closeOpenCard:cardHandle];
+        return;
+    }
+    else if(retDataLen >= 2){
+        char resultStr[1024] = {0};
+        HexToStr(resultStr, retData, retDataLen);
+        NSLog(@"FT_FUNCTION_NUM_TRANSMIT errCode != 0, recv:\n%s",resultStr);
+    }
+    else{
+        NSLog(@"FT_FUNCTION_NUM_TRANSMIT NFC_transmit failed!");
+        [self closeOpenCard:cardHandle];
+        return;
+    }
+    
+    //for testing
+    [self closeOpenCard:cardHandle];
 }
 
 #pragma mark - aR530 Delegates
@@ -580,6 +764,18 @@ int connnectedState = -1;
 
             break;
 
+        }
+
+        case FT_FUNCTION_NUM_RECOGNIZE:{
+            NSLog(@"FT_FUNCTION_NUM_RECOGNIZE") ;
+            [self getRecognizeResult:cardHandle errCode:errCode];
+            break;
+        }
+
+        case FT_FUNCTION_NUM_TRANSMIT:{
+            NSLog(@"FT_FUNCTION_NUM_TRANSMIT") ;
+            [self getTransmitResult:cardHandle retData:retData retDataLen:retDataLen errCode:errCode];
+            break ;
         }
 
         default:
