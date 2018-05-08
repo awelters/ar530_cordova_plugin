@@ -102,7 +102,7 @@ module.exports = {
 
         exec(
 
-            function(tagUid) { resultCallback({ tagUid: tagUid }) },
+            function(tagUid,payload) { resultCallback({ tagUid: tagUid, payload: payload }) },
 
             function(failure) { console.log("ERROR: Ar530Plugin.addTagDiscoveredListener: " + failure) },
 
