@@ -389,7 +389,7 @@ NSString *memory = nil;
 {
     if(errCode == 0xFF) {
         NSLog(@"FT_FUNCTION_NUM_RECOGNIZE failed!");
-        [self closeOpenCard:cardHandle];
+        [self tagDiscovered:cardHandle];
         return;
     }
     
@@ -445,26 +445,25 @@ NSString *memory = nil;
     }
     
     cardType = cardHandle->type;
- 
+
     memoryRead = 0;
     memory = @"";
     if(cardT == CARD_NXP_MIFARE_UL) {
         [self readMifareUltralightMemory:cardHandle];
     }
     else {
-        [self tagDiscovered];
-        [self closeOpenCard:cardHandle];
+        [self tagDiscovered:cardHandle];
     }
 }
 
--(void)tagDiscovered {
+-(void)tagDiscovered:(nfc_card_t)cardHandle {
     // send tag read update to Cordova
     
     if (didFindTagWithUidCallbackId) {
         
         NSString *str = [NSString stringWithFormat:@"%s", newUid];
         
-        NSArray* result = @[str];
+        NSArray* result = @[str,memory];
         
         CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsMultipart:result];
         
@@ -472,6 +471,8 @@ NSString *memory = nil;
         
         [self.commandDelegate sendPluginResult:pluginResult callbackId:didFindTagWithUidCallbackId];
     }
+    
+    [self closeOpenCard:cardHandle];
 }
 
 -(void)readMifareUltralightMemory:(nfc_card_t)cardHandle {
@@ -520,15 +521,14 @@ NSString *memory = nil;
                 NSString* logAlso = @"parseTransmitResult memory:\n";
                 logAlso = [logAlso stringByAppendingString:memory];
                 NSLog(logAlso);
-                [self tagDiscovered];
-                [self closeOpenCard:cardHandle];
+                [self tagDiscovered:cardHandle];
             }
         }
         else {
-            [self closeOpenCard:cardHandle];
+            [self tagDiscovered:cardHandle];
         }
     } else {
-        [self closeOpenCard:cardHandle];
+        [self tagDiscovered:cardHandle];
     }
 }
 
@@ -542,6 +542,7 @@ NSString *memory = nil;
     
     if(apduText == nil || [apduText isEqualToString:@""] ){
         NSLog(@"transmit APDU is error!") ;
+        [self tagDiscovered:cardHandle];
         return;
     }
     
@@ -582,22 +583,20 @@ NSString *memory = nil;
     }
     else if(NFC_CARD_ES_NO_SMARTCARD == errCode) {
         NSLog(@"FT_FUNCTION_NUM_TRANSMIT Not Found SmartCard! Please Reconnect with Reader!");
-        [self closeOpenCard:cardHandle];
+        [self tagDiscovered:cardHandle];
         return;
     }
     else if(retDataLen >= 2){
         char resultStr[1024] = {0};
         HexToStr(resultStr, retData, retDataLen);
         NSLog(@"FT_FUNCTION_NUM_TRANSMIT errCode != 0, recv:\n%s",resultStr);
+        [self tagDiscovered:cardHandle];
     }
     else{
         NSLog(@"FT_FUNCTION_NUM_TRANSMIT NFC_transmit failed!");
-        [self closeOpenCard:cardHandle];
+        [self tagDiscovered:cardHandle];
         return;
     }
-    
-    //for testing
-    [self closeOpenCard:cardHandle];
 }
 
 #pragma mark - aR530 Delegates
