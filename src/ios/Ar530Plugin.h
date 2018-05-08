@@ -92,7 +92,21 @@
 
 -(void)connected:(int)yesOrNo;
 
+-(void)cardIsOpen:(nfc_card_t)cardHandle;
+
+-(void)closeOpenCard:(nfc_card_t)cardHandle;
+
 -(void)getOpenResult:(nfc_card_t)cardHandle;
+
+-(void)getRecognizeResult:(nfc_card_t)cardHandle errCode:(unsigned int)errCode;
+
+-(void)readMifareUltralightMemory:(nfc_card_t)cardHandle;
+
+-(void)parseTransmitResult:(nfc_card_t)cardHandle result:(NSString *)result;
+
+-(void)transmit:(nfc_card_t)cardHandle apduText:(NSString *)apduText;
+
+-(void)getTransmitResult:(nfc_card_t)cardHandle retData:(unsigned char *)retData retDataLen:(unsigned int)retDataLen errCode:(unsigned int)errCode;
 
 
 // SDK reader delegates
