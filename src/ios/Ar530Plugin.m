@@ -452,7 +452,25 @@ NSString *memory = nil;
         [self readMifareUltralightMemory:cardHandle];
     }
     else {
+        [self tagDiscovered];
         [self closeOpenCard:cardHandle];
+    }
+}
+
+-(void)tagDiscovered {
+    // send tag read update to Cordova
+    
+    if (didFindTagWithUidCallbackId) {
+        
+        NSString *str = [NSString stringWithFormat:@"%s", newUid];
+        
+        NSArray* result = @[str];
+        
+        CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsMultipart:result];
+        
+        [pluginResult setKeepCallback:[NSNumber numberWithBool:YES]];
+        
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:didFindTagWithUidCallbackId];
     }
 }
 
@@ -502,6 +520,7 @@ NSString *memory = nil;
                 NSString* logAlso = @"parseTransmitResult memory:\n";
                 logAlso = [logAlso stringByAppendingString:memory];
                 NSLog(logAlso);
+                [self tagDiscovered];
                 [self closeOpenCard:cardHandle];
             }
         }
