@@ -108,6 +108,18 @@ module.exports = {
 
             "Ar530Plugin", "setTagDiscoveredCallback", []);
 
+    },
+
+    addDebugListener: function(resultCallback, success, failure) {
+
+        exec(
+
+             function(msg) { resultCallback(msg) },
+
+             function(failure) { console.log("ERROR: Ar530Plugin.addDebugListener: " + failure) },
+
+             "Ar530Plugin", "setDebugCallback", []);
+
     }
 
 }
