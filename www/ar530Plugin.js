@@ -120,6 +120,12 @@ module.exports = {
 
              "Ar530Plugin", "setDebugCallback", []);
 
+    },
+   
+    removeDebugListener: function(success, failure) {
+
+        exec(success, failure, "Ar530Plugin", "unsetDebugCallback", []);
+
     }
 
 }
