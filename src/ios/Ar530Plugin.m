@@ -197,6 +197,9 @@ NSString *memory = nil;
 
 }
 
+- (void)unsetDebugCallback:(CDVInvokedUrlCommand*)command {
+     debugCallbackId = nil;
+}
 
 #pragma mark --Internal Methods--
 
