@@ -198,6 +198,11 @@ NSString *memory = nil;
 }
 
 - (void)unsetDebugCallback:(CDVInvokedUrlCommand*)command {
+     if(debugCallbackId)  {
+            CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_NO_RESULT];
+            [pluginResult setKeepCallback:[NSNumber numberWithBool:NO]];
+            [self.commandDelegate sendPluginResult:pluginResult callbackId:debugCallbackId];
+     }
      debugCallbackId = nil;
 }
 
