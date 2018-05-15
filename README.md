@@ -128,3 +128,14 @@ app.initialize();
 		String payload
 	}
 	```
+
+* `addDebugListener(resultCallback)`
+
+	Assign a callback function to get the debug info of the reader
+
+	```
+      	ar530Plugin.addDebugListener(resultCallback);
+      
+      	function resultCallback(msg)
+	String msg
+	```
