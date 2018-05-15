@@ -78,6 +78,8 @@
 
 - (void)setDebugCallback:(CDVInvokedUrlCommand*)command;
 
+- (void)unsetDebugCallback:(CDVInvokedUrlCommand*)command;
+
 
 // Internal functions
 
