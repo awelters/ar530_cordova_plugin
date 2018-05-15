@@ -28,6 +28,8 @@
 
     NSString* deviceConnectedCallbackId;
 
+    NSString* debugCallbackId;
+
 
      // Ar530 reader attributes
 
@@ -74,9 +76,12 @@
 
 - (void)setTagDiscoveredCallback:(CDVInvokedUrlCommand*)command;
 
+- (void)setDebugCallback:(CDVInvokedUrlCommand*)command;
 
 
 // Internal functions
+
+-(void)debug:(NSString *)msg;
 
 -(void)kickoff;
 
