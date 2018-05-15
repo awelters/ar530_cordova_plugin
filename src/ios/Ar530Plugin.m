@@ -119,6 +119,7 @@ NSString *memory = nil;
         scanPeriod = 0;
 
         if( startPoll == YES ) {
+            [self debug:@"About to scan for tags"];
             [self poll];
         }
 
@@ -151,7 +152,7 @@ NSString *memory = nil;
 
         if(isPolling == NO) {
             isPolling = YES;
-
+            [self debug:@"About to scan for a tag"];
             [self poll];
         }
 
@@ -190,9 +191,29 @@ NSString *memory = nil;
 }
 
 
+- (void)setDebugCallback:(CDVInvokedUrlCommand*)command {
+
+    debugCallbackId = command.callbackId;
+
+}
+
 
 #pragma mark --Internal Methods--
 
+
+-(void)debug:(NSString *)msg {
+    dispatch_async(dispatch_get_main_queue(), ^(void){
+        NSString* logResult = [NSString stringWithFormat:@"------- DEBUG ---------: %@", msg];
+        NSLog(logResult);
+        if (debugCallbackId) {
+            CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:msg];
+
+            [pluginResult setKeepCallback:[NSNumber numberWithBool:YES]];
+
+            [self.commandDelegate sendPluginResult:pluginResult callbackId:debugCallbackId];
+        }
+    });
+}
 
 -(void)kickoff
 
@@ -203,6 +224,8 @@ NSString *memory = nil;
         // Here we need waiting until the device has initialized
 
         [NSThread sleepForTimeInterval:2.5f] ;
+
+        [self debug:@"Getting device id and library version"];
 
         [ _ar530 getDeviceID:self];
 
@@ -306,6 +329,8 @@ NSString *memory = nil;
     }
 
     NSLog(@"connected: %d", connnectedState);
+    NSString* debugInfo = [NSString stringWithFormat:@"connection state changed to: %d",connnectedState];
+    [self debug:debugInfo];
 
     // send tag read update to Cordova
 
@@ -348,6 +373,8 @@ NSString *memory = nil;
 
                 // Dispose of any resources that can be recreated.
 
+                [self debug:@"Closing tag communication channel"];
+
                 [_ar530 NFC_Card_Close:cardHandle delegate:self];
 
             });
@@ -375,6 +402,8 @@ NSString *memory = nil;
         [self cardIsOpen:cardHandle];
 
         NSLog(@"FT_FUNCTION_NUM_OPEN_CARD Found tag UID: %s", newUid);
+
+        [self debug:@"Tag communication channel open, uid obtained, attempting to recognize card type"];
 
         [_ar530 NFC_Card_Recognize:cardHandle delegate:self];
     }
@@ -410,13 +439,17 @@ NSString *memory = nil;
         tempkeyType = @"A" ;
         if(cardT == CARD_NXP_MIFARE_1K || cardT == CARD_NXP_MIFARE_4K){
             NSLog(@"FT_FUNCTION_NUM_RECOGNIZE Card Type:Mifare 1K\nSAK:%02x", cardHandle->SAK);
+            [self debug:@"Tag Type: NXP_MIFARE_1K or NXP_MIFARE_4K"];
         }else if(cardT == CARD_NXP_DESFIRE_EV1) {
             NSLog(@"FT_FUNCTION_NUM_RECOGNIZE Card Type:A\nSAK:%02x", cardHandle->SAK);
+            [self debug:@"Tag Type: NXP_DESFIRE_EV1"];
         }else if(cardT == CARD_NXP_MIFARE_UL) {
             //this is the only one we can actually handle
             NSLog(@"FT_FUNCTION_NUM_RECOGNIZE Card Type:Mifare 1K\nSAK:%02x", cardHandle->SAK);
+            [self debug:@"Tag Type: NXP_MIFARE_UL"];
         }else {
             NSLog(@"FT_FUNCTION_NUM_RECOGNIZE Card Type:A\nSAK:%02x", cardHandle->SAK);
+            [self debug:@"Tag Type: A"];
         }
     }
     else if(cardHandle->type == CARD_TYPE_B) {
@@ -424,22 +457,27 @@ NSString *memory = nil;
         if(cardT == CARD_NXP_M_1_B) {
             HexToStr(pupi, cardHandle->PUPI, cardHandle->PUPILen);
             NSLog(@"FT_FUNCTION_NUM_RECOGNIZE Card Type:B\nATQB:%02x PUPI:%s", cardHandle->ATQB, pupi);
+            [self debug:@"Tag Type: NXP_M_1_B"];
         }else if(cardT == CARD_NXP_TYPE_B) {
             HexToStr(pupi, cardHandle->PUPI, cardHandle->PUPILen);
             NSLog(@"FT_FUNCTION_NUM_RECOGNIZE Card Type:B\nATQB:%02x PUPI:%s", cardHandle->ATQB, pupi);
+            [self debug:@"Tag Type: B"];
         }
     }
     else if(cardHandle->type == CARD_TYPE_C) {                  // Felica
         HexToStr(IDm, cardHandle->IDm, 8);
         HexToStr(PMm, cardHandle->PMm, 8);
         NSLog(@"FT_FUNCTION_NUM_RECOGNIZE Card Type:B\nFelica\nFelica_ID:%s\nPad_ID:%s", IDm, PMm);
+        [self debug:@"Tag Type: Felica"];
     }
     else if(cardHandle->type == CARD_TYPE_D) {                  // Topaz
         HexToStr(pupi, cardHandle->PUPI, cardHandle->PUPILen);
         NSLog(@"FT_FUNCTION_NUM_RECOGNIZE Card Type:Topaz\nATQA:%02x ID1z:%s", cardHandle->ATQA, pupi);
+        [self debug:@"Tag Type: Topaz"];
     }
     else{
         NSLog(@"FT_FUNCTION_NUM_RECOGNIZE Unknown type of card!");
+        [self debug:@"Tag Type: Unknown"];
         [self closeOpenCard:cardHandle];
         return ;
     }
@@ -457,11 +495,15 @@ NSString *memory = nil;
 }
 
 -(void)tagDiscovered:(nfc_card_t)cardHandle {
+    NSString *str = [NSString stringWithFormat:@"%s", newUid];
+
+    NSString* logResult = [NSString stringWithFormat:@"tagDiscovered, uid = %@, memory = %@", str, memory];
+    NSLog(logResult);
+    [self debug:logResult];
+
     // send tag read update to Cordova
     
     if (didFindTagWithUidCallbackId) {
-        
-        NSString *str = [NSString stringWithFormat:@"%s", newUid];
         
         NSArray* result = @[str,memory];
         
@@ -481,21 +523,29 @@ NSString *memory = nil;
         //[self transmit:cardHandle apduText:@"FFCA000000"];
         //[self OnCusTransmit:cardHandle apduText:@"3B8F8001804F0CA0000003060300030000000068"];
         if(memoryRead == 0) {
+            [self debug:@"Reading 16 bytes, pages 0-3"];
             [self transmit:cardHandle apduText:@"FFB0000010"];
         }
         else if(memoryRead == 1) {
+            [self debug:@"Reading 16 bytes, pages 4-7"];
             [self transmit:cardHandle apduText:@"FFB0000410"];
         }
         else if(memoryRead == 2) {
+            [self debug:@"Reading 16 bytes, pages 8-11"];
             [self transmit:cardHandle apduText:@"FFB0000810"];
         }
         else if(memoryRead == 3) {
+            [self debug:@"Reading 16 bytes, pages 12-15"];
             [self transmit:cardHandle apduText:@"FFB0000C10"];
         }
     });
 }
 
 -(void)parseTransmitResult:(nfc_card_t)cardHandle result:(NSString *)result {
+    NSString* logResult = [NSString stringWithFormat:@"parseTransmitResult result: %@", result];
+    NSLog(logResult);
+    [self debug:logResult];
+
     //readMifareUltralightMemory result
     unsigned long len = [result length];
     if (len >= 5) {
@@ -568,12 +618,15 @@ NSString *memory = nil;
     StrToHex(apduBuf, (char *)apduStr, (unsigned int)apduLen);
     
     NSLog(@"transmit send:\n%s", ptmpStr);
+    [self debug:@"About to transmit data to the tag"];
     //NFC_Card_No_Head_Transmit
     [_ar530 NFC_Card_Transmit:cardHandle sendBuf:apduBuf sendLen:apduLen delegate:self];
 }
 
 -(void)getTransmitResult:(nfc_card_t)cardHandle retData:(unsigned char *)retData retDataLen:(unsigned int)retDataLen errCode:(unsigned int)errCode
 {
+    NSString *debugInfo = nil;
+
     if(0 == errCode) {
         char resultStr[1024] = {0};
 
@@ -583,6 +636,7 @@ NSString *memory = nil;
     }
     else if(NFC_CARD_ES_NO_SMARTCARD == errCode) {
         NSLog(@"FT_FUNCTION_NUM_TRANSMIT Not Found SmartCard! Please Reconnect with Reader!");
+        [self debug:@"Transmit error, tag not found"];
         [self tagDiscovered:cardHandle];
         return;
     }
@@ -590,10 +644,14 @@ NSString *memory = nil;
         char resultStr[1024] = {0};
         HexToStr(resultStr, retData, retDataLen);
         NSLog(@"FT_FUNCTION_NUM_TRANSMIT errCode != 0, recv:\n%s",resultStr);
+        debugInfo = [NSString stringWithFormat:@"Transmit error, errCode = %d, resultStr = %s", errCode, resultStr];
+        [self debug:debugInfo];
         [self tagDiscovered:cardHandle];
     }
     else{
         NSLog(@"FT_FUNCTION_NUM_TRANSMIT NFC_transmit failed!");
+        debugInfo = [NSString stringWithFormat:@"Transmit error, errCode = %d", errCode];
+        [self debug:debugInfo];
         [self tagDiscovered:cardHandle];
         return;
     }
@@ -607,7 +665,7 @@ NSString *memory = nil;
 
     NSLog(@"R connected") ;
 
-
+    [self debug:@"device connect event heard"];
 
     if(isOpen == YES){
 
@@ -627,7 +685,7 @@ NSString *memory = nil;
 
     NSLog(@"R disconnect") ;
 
-
+    [self debug:@"device disconnect event heard"];
 
     [self stopScanning];
     [self resetDeviceInfo];
@@ -688,6 +746,8 @@ NSString *memory = nil;
 
                 if (retString.length <= 0) {
 
+                    [self debug:@"Could not obtain device id and library version"];
+
                     if(isOpen == YES) {
 
                         isOpen = NO ;
@@ -707,6 +767,10 @@ NSString *memory = nil;
 
                     _libVersion = [NSString stringWithFormat:@"%@", [_ar530 getLibVersion], nil];
                     _deviceID = [NSString stringWithFormat:@"%@",retString,nil];
+
+                    NSString* logResult = [NSString stringWithFormat:@"Obtained device id (%@) and library version (%@), getting firmware version", _deviceID, _libVersion];
+                    [self debug:logResult];
+
                     [_ar530 getFirmwareVersion:self];
 
                 }
@@ -726,7 +790,10 @@ NSString *memory = nil;
             dispatch_async(dispatch_get_main_queue(), ^(void){
                 
                 _firmwareVersion = [NSString stringWithFormat:@"%@",retString,nil];
-                
+
+                NSString* logResult = [NSString stringWithFormat:@"Obtained firmware version (%@), getting device uid", _firmwareVersion];
+                [self debug:logResult];
+
                 // get device UID
                 [ _ar530 getDeviceUID:self];
                 
@@ -743,6 +810,9 @@ NSString *memory = nil;
             dispatch_async(dispatch_get_main_queue(), ^(void){
                 
                 _deviceUID = [NSString stringWithFormat:@"%@",retString,nil];
+
+                NSString* logResult = [NSString stringWithFormat:@"Obtained device uid (%@)", _deviceUID];
+                [self debug:logResult];
 
                 if(isOpen == NO) {
 
